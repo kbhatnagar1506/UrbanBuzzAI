@@ -1,5 +1,5 @@
 {
-  "name": "component-forge",
+  "name": "auralink",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -20,6 +20,7 @@
     "@headless-tree/react": "^1.4.0",
     "@hookform/resolvers": "^5.2.1",
     "@radix-ui/react-icons": "latest",
+    "@radix-ui/react-slot": "^1.2.4",
     "@react-three/drei": "^10.0.6",
     "@react-three/fiber": "^9.1.2",
     "@vercel/analytics": "latest",

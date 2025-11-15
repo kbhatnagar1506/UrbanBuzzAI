@@ -3,33 +3,33 @@ import { Search, Volume2, Users, MapPin, Heart, Zap } from 'lucide-react'
 const features = [
   {
     icon: Search,
-    title: "Agent Swarm Exploration",
-    description: "Multiple AI explorers fan out across city maps, hunting for hidden infrastructure—bus stops, safe staircases, accessible entrances, and more."
+    title: "AI Route Analysis",
+    description: "Get comprehensive analysis of accessibility, safety, curves, and hazards along your entire route—not just turn-by-turn directions."
   },
   {
     icon: MapPin,
-    title: "Custom Searches",
-    description: "Ask for any feature not listed on standard maps. Wheelchair-accessible routes, public bathrooms, specific entrances—just ask."
+    title: "Visual Route Exploration",
+    description: "See Street View images from every pit stop along your route. Click any image for instant AI-powered analysis of what you'll encounter."
   },
   {
     icon: Volume2,
-    title: "Voice-First Navigation",
-    description: "No need to squint at screens. Real-time audio directions perfect for visually-impaired users, elders, and hands-free navigation."
+    title: "Conversational Voice AI",
+    description: "Ask naturally: 'Show me images', 'What about accessibility?', 'Is it safe?'—get detailed, intelligent responses about your route."
   },
   {
     icon: Heart,
-    title: "Safety & Accessibility",
-    description: "Routes consider safety, visibility, crowd levels, and accessibility, giving everyone confidence as they move."
+    title: "Accessibility Intelligence",
+    description: "Every route analyzed for wheelchair access, curb cuts, ramps, sidewalks, and pedestrian infrastructure. Know before you go."
   },
   {
     icon: Users,
-    title: "Adaptive & Inclusive",
-    description: "Adapts to individual needs, from mobility limitations to language preferences, ensuring navigation for everyone."
+    title: "Safety-First Analysis",
+    description: "Comprehensive safety assessment: visibility, lighting, traffic patterns, hazards, and blind spots at every point along your route."
   },
   {
     icon: Zap,
-    title: "Playful Design",
-    description: "Bee-themed visuals and friendly tone turn frustrating wayfinding into a game-like adventure."
+    title: "On-Demand Insights",
+    description: "Click any Street View image to get instant analysis of curves, infrastructure, hazards, and features—all powered by advanced AI vision."
   }
 ]
 
@@ -42,7 +42,7 @@ export function FeaturesSection() {
             Features That Make Navigation Simple
           </h2>
           <p className="text-lg text-muted-foreground">
-            Urban Buzz uses AI agent swarms to explore what traditional maps miss
+            AI-powered route analysis, visual exploration, and conversational intelligence—features that no other navigation platform offers
           </p>
         </div>
 

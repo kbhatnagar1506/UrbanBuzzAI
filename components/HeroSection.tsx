@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Sparkles, Navigation, Shield } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 
 export function HeroSection() {
   return (
@@ -19,12 +20,12 @@ export function HeroSection() {
             </h1>
             
             <p className="mb-10 text-pretty text-lg text-muted-foreground sm:text-xl leading-relaxed">
-              Deploy swarms of AI agents to explore city streets in real-time. Get instant, voice-powered guidance that finds what maps can't—safe routes, hidden infrastructure, and accessible paths.
+              The only navigation platform that analyzes your entire route with AI vision. See Street View images from every pit stop, get detailed accessibility and safety analysis, and ask questions naturally—all powered by advanced AI that understands what you'll encounter along the way.
             </p>
 
             <div className="flex flex-col items-start gap-4 sm:flex-row">
-              <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-8">
-                Try Urban Buzz Free
+              <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-8" asChild>
+                <Link href="/auth">Try Urban Buzz Free</Link>
               </Button>
               <Button size="lg" variant="outline" className="h-12 px-8">
                 Watch Demo

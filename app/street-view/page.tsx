@@ -1,32 +1,17 @@
+import { StreetViewGallery } from "@/components/StreetViewGallery"
 import { Navbar } from "@/components/Navbar"
-import { HeroSection } from "@/components/HeroSection"
-import { FeaturesSection } from "@/components/FeaturesSection"
-import { CompetitiveAdvantageSection } from "@/components/CompetitiveAdvantageSection"
-import { HowItWorksSection } from "@/components/HowItWorksSection"
-import { SolutionsSection } from "@/components/SolutionsSection"
-import { StatsSection } from "@/components/StatsSection"
-import { UseCasesSection } from "@/components/UseCasesSection"
-import { TestimonialsSection } from "@/components/TestimonialsSection"
-import { PricingSection } from "@/components/PricingSection"
-import { FAQSection } from "@/components/FAQSection"
-import { CTASection } from "@/components/CTASection"
 import { Footer } from "@/components/Footer"
 
-export default function Page() {
+export const metadata = {
+  title: "Street View Gallery | Urban Buzz AI",
+  description: "Explore areas using Google Street View images from multiple angles.",
+}
+
+export default function StreetViewPage() {
   return (
-    <>
+    <div className="min-h-screen flex flex-col">
       <Navbar />
-      <HeroSection />
-      <FeaturesSection />
-      <CompetitiveAdvantageSection />
-      <HowItWorksSection />
-      <SolutionsSection />
-      <StatsSection />
-      <UseCasesSection />
-      <TestimonialsSection />
-      <PricingSection />
-      <FAQSection />
-      <CTASection />
+      <StreetViewGallery />
       <Footer 
         companyName="Urban Buzz AI"
         tagline="AI-powered urban navigation that finds what maps can't"
@@ -75,6 +60,7 @@ export default function Page() {
           email: "hello@urbanbuzz.ai",
         }}
       />
-    </>
+    </div>
   )
 }
+
