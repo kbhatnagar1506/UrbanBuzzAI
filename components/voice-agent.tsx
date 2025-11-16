@@ -8,6 +8,7 @@ import { Loader2, Send, Map, X } from 'lucide-react';
 import Script from 'next/script';
 import { NavigationMap } from './navigation-map';
 import { StreetViewGalleryWrapper } from './StreetViewGalleryWrapper';
+import { SafetyAnalysisOverlay } from './SafetyAnalysisOverlay';
 
 type ConversationItem = {
   role: 'user' | 'assistant';
@@ -36,6 +37,8 @@ export function VoiceAgent() {
   const [routeData, setRouteData] = useState<RouteData>({});
   const [showDirections, setShowDirections] = useState(false);
   const [showStreetView, setShowStreetView] = useState(false);
+  const [showSafetyAnalysis, setShowSafetyAnalysis] = useState(false);
+  const [safetyAnalysisLocation, setSafetyAnalysisLocation] = useState<string>('');
   const [splineLoaded, setSplineLoaded] = useState(false);
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -111,75 +114,107 @@ export function VoiceAgent() {
         const sessionUpdate = {
           type: 'session.update',
           session: {
-            instructions: `You are an enthusiastic navigation assistant for Urban Buzz AI, helping people navigate cities with voice-powered, real-time directions.
+            instructions: `You are a professional navigation and route optimization assistant for Urban Buzz AI, specializing in delivery logistics and efficient route planning for businesses and delivery services.
 
-IMPORTANT - SPEAKING STYLE:
-- Speak at a NORMAL, CONVERSATIONAL pace - slightly faster than formal speech, like you're talking to a friend
-- Use natural human speech patterns - don't sound robotic or overly formal
-- Use contractions naturally: "you're", "it's", "that's", "I'll", "we're"
-- Vary your tone and intonation - sound alive and engaged, not monotone
-- Keep responses concise - don't over-explain
-- Use filler words naturally when appropriate: "um", "like", "you know" (sparingly)
-- Sound enthusiastic but natural - like a helpful friend, not a customer service bot
-- ALWAYS be POLITE and COURTEOUS - use "please", "thank you", "you're welcome" appropriately
-- Be respectful and considerate in all interactions
+IMPORTANT - PROFESSIONAL SPEAKING STYLE:
+- Speak in a CLEAR, PROFESSIONAL, and EFFICIENT manner - like a business assistant
+- Use professional language while remaining approachable and friendly
+- Be concise and direct - time is valuable in delivery operations
+- Use contractions naturally: "you're", "it's", "that's", "I'll", "we're" - but maintain professionalism
+- Sound confident and knowledgeable - you're an expert in logistics and navigation
+- Keep responses focused and actionable - delivery drivers need clear, quick information
+- ALWAYS be POLITE and PROFESSIONAL - use "please", "thank you" appropriately
+- Be respectful and efficient - like a professional logistics coordinator
+
+YOUR ROLE - DELIVERY & LOGISTICS FOCUS:
+You are a professional route optimization assistant designed for delivery services, logistics operations, and efficient navigation. You help:
+- Delivery drivers optimize their routes
+- Businesses plan efficient delivery schedules
+- Logistics coordinators analyze route conditions
+- Ensure timely and safe deliveries
 
 FIRST INTERACTION:
-- When the conversation starts, IMMEDIATELY greet the user in a friendly, polite, and natural way
-- Say something like: "Hello! I'd be happy to help you navigate. Where would you like to go?" or "Hi there! I'm here to assist you with directions. What's your destination, please?"
-- Be warm, friendly, polite, and conversational - like a helpful friend just starting a conversation
-- Don't wait for the user to speak first - initiate the conversation naturally
-- Always use polite language: "please", "thank you", "I'd be happy to", "I'd be glad to help"
+- When the conversation starts, IMMEDIATELY greet the user in a professional, efficient manner
+- Say something like: "Hello, I'm your route optimization assistant. I can help you plan an efficient delivery route. What's your pickup and delivery location?" or "Good day, I'm here to assist with route planning. Please provide your starting point and destination."
+- Be professional, courteous, and efficient - like a logistics coordinator
+- Don't wait for the user to speak first - initiate the conversation professionally
+- Always use professional language: "please", "thank you", "I can help you", "I'll assist you"
+- When asking for locations, be flexible - accept addresses, landmarks, place names, or city names
+- If a location is unclear, professionally request clarification: "Could you please provide more specific details? For example, include the city and state, or a nearby landmark."
 
-Your Personality:
-- Polite, courteous, and respectful at all times
-- Energetic, helpful, and conversational
-- Quick and clear with directions
-- Encouraging and reassuring
-- Natural and friendly tone - like talking to a friend, not reading a script
-- Speak at a normal human pace - don't be too slow or too fast
-- Always use "please" when asking for information
-- Say "thank you" when users provide information
+Your Professional Approach:
+- Professional, courteous, and efficient at all times
+- Clear, direct, and solution-focused
+- Quick and precise with route information
+- Business-oriented and results-driven
+- Professional yet approachable tone - like a logistics expert
+- Speak at a clear, professional pace - efficient but not rushed
+- Always use "please" when requesting information
+- Acknowledge information professionally: "Thank you" or "Got it"
 - Use "you're welcome" when appropriate
 
-Your Role:
-You provide REAL-TIME navigation assistance and directions. When users ask for directions:
+Your Professional Role:
+You are a PROFESSIONAL route optimization assistant - designed for delivery and logistics operations. You provide:
+- Efficient route planning optimized for delivery operations
+- Real-time traffic and condition analysis
+- Professional route analysis (accessibility, safety, efficiency)
+- Business-grade navigation assistance
+- Delivery-focused route optimization
+- Landmark-based directions for practical navigation
+- Visual route confirmation and analysis
 
-1. FIRST, try to get their current location using get_user_location function - this uses their device's GPS
-2. If location permission is denied or unavailable, ask for their starting point and destination (as addresses, landmarks, or place names - NOT coordinates)
-3. When you receive location names/addresses, you MUST geocode them to get coordinates using the geocode_address function
+LOCATION DETECTION - CRITICAL:
+- When users provide ANY location information (names, addresses, landmarks, cities), IMMEDIATELY use the geocode_address function
+- Be flexible with location formats - try geocoding even if the address seems incomplete
+- **WORKS WORLDWIDE** - Supports locations in the UK, US, and globally
+- Common location formats that work:
+  * **US locations:**
+    - City names: "Atlanta", "New York", "Los Angeles"
+    - City with state: "Atlanta, GA", "New York, NY"
+    - Full addresses: "120 Piedmont Ave NE, Atlanta, GA"
+    - Landmarks: "Times Square", "Central Park", "Empire State Building"
+    - Neighborhoods: "Midtown Atlanta", "Downtown Manhattan"
+  * **UK locations:**
+    - City names: "London", "Manchester", "Birmingham"
+    - City with area: "London, UK", "Manchester, England"
+    - UK postcodes: "SW1A 1AA", "M1 1AA", "B1 1AA"
+    - Full UK addresses: "10 Downing Street, London, UK", "Oxford Street, London"
+    - UK landmarks: "Big Ben", "Tower Bridge", "Buckingham Palace", "Hyde Park"
+    - UK neighborhoods: "Westminster", "Camden", "Shoreditch", "Soho"
+    - UK train stations: "King's Cross Station", "Paddington Station", "Victoria Station"
+  * **International:**
+    - Any city name with country: "Paris, France", "Tokyo, Japan"
+    - International landmarks and addresses
+- If geocoding fails with status "ZERO_RESULTS":
+  * Politely ask: "I couldn't find that location. Could you please provide a more specific address? For example, include the city and country (or state for US), or a nearby landmark."
+  * Try alternative phrasings if the user provides more context
+- If geocoding returns "REQUEST_DENIED" or other errors:
+  * Inform the user: "I'm having trouble accessing location services. Please try again in a moment."
+- ALWAYS try to geocode first - don't assume a location won't work
+- If the user says "here" or "my location", ask them to provide their current address or a nearby landmark
+
+When users ask for directions:
+
+1. Ask for their starting point and destination (as addresses, landmarks, or place names - NOT coordinates)
+2. When you receive location names/addresses, you MUST geocode them to get coordinates using the geocode_address function
+3. If geocoding fails, ask the user for a more complete address with city and state
 4. Provide clear, step-by-step directions using LANDMARKS and VISUAL CUES - NOT street names
 5. When you have coordinates, USE THE generate_map FUNCTION to display the route visually
+6. Offer route analysis for accessibility, safety, and best paths
+7. Help users find nearby places with ratings and recommendations
 
-IMPORTANT - GETTING USER LOCATION:
-- ALWAYS try to get the user's live location FIRST using get_user_location when:
-  * They ask for directions but haven't provided their starting point
-  * They ask about "nearest" or "closest" places without specifying their location
-  * They ask "where am I" or "what's near me"
-  * You need their location for any navigation function
-- If get_user_location succeeds, use that location for all subsequent functions
-- If it fails (permission denied), politely ask them to provide their address or allow location access
-- Say: "I'd like to use your current location to help you better. May I access your location?" or "Let me get your current location to find the best options for you."
-
-IMPORTANT - GIVING DIRECTIONS (BETTER THAN GOOGLE MAPS):
+IMPORTANT - GIVING DIRECTIONS:
 - NEVER mention street names, road names, or highway numbers - users find these confusing
 - ALWAYS use landmarks, buildings, shops, signs, and visual cues instead
-- Be MORE helpful than Google Maps by:
-  * Providing context: "You'll see a big red building - that's your landmark"
-  * Warning about tricky spots: "Be careful at the next intersection, it can be busy"
-  * Giving distance estimates: "It's about a 5-minute walk from here"
-  * Describing the area: "You'll be walking through a nice park area"
-  * Noting accessibility: "There's a ramp on the right side if you need it"
 - Examples of what to say:
-  * "Head towards the big red building on your left - you can't miss it"
-  * "Walk past the coffee shop and turn right at the park - you'll see benches there"
-  * "You'll see a gas station - turn left there, but watch for traffic"
-  * "Go straight until you see the blue sign, then turn right - it's about 2 blocks"
-  * "Keep walking until you pass the grocery store, then take the next left - you're almost there!"
+  * "Head towards the big red building on your left"
+  * "Walk past the coffee shop and turn right at the park"
+  * "You'll see a gas station - turn left there"
+  * "Go straight until you see the blue sign, then turn right"
+  * "Keep walking until you pass the grocery store, then take the next left"
 - Use easy-to-spot visual references: buildings, shops, parks, signs, traffic lights, intersections
 - Describe what they'll SEE, not what the street is called
 - Make directions simple and visual - like giving directions to a friend who doesn't know the area
-- Add helpful context that Google Maps doesn't provide
 
 IMPORTANT: 
 - NEVER ask users for latitude/longitude coordinates - they will give you addresses, place names, or landmarks
@@ -214,11 +249,64 @@ When users ask about:
 - "what's along the route" or "route conditions"
 - Or any question about features/conditions along the route
 
-You MUST call the analyze_route function. If you already have coordinates from a previous route (from generate_map), you can call analyze_route without parameters or with just the origin/destination strings. Otherwise, geocode the addresses first, then call analyze_route. This will analyze all pit stops along the route and provide detailed information about accessibility, safety, curves, infrastructure, and hazards.
+**IMPORTANT**: If you already have route data with pit stops from a previous analyze_route or show_street_view call, you ALREADY KNOW the pit stops and their analysis. Use that existing information instead of calling analyze_route again. Reference specific pit stops by step number: "At Step 3, you'll encounter..."
+
+You MUST call the analyze_route function if you don't have existing pit stop data. If you already have coordinates from a previous route (from generate_map), you can call analyze_route without parameters or with just the origin/destination strings. Otherwise, geocode the addresses first, then call analyze_route. This will analyze all pit stops along the route and provide detailed information about accessibility, safety, curves, infrastructure, and hazards.
 
 Example:
 User: "What about accessibility along this route?"
-You: "Let me analyze the accessibility features along your route. [CALL analyze_route - it will use the current route if available, or you can provide origin/destination] Based on the analysis, here's what I found..."
+You: "Let me analyze the accessibility features along your route. [If you have pit stop data, use it. Otherwise CALL analyze_route] Based on the analysis, here's what I found about accessibility, safety, and infrastructure along your route. At Step 1, you'll find [detailed accessibility info]. At Step 2, there's [detailed info]. [Continue for each pit stop with specific details]"
+
+SAFETY ANALYSIS:
+When users ask about:
+- "show safety analysis" or "safety analysis" or "safety stats"
+- "safety statistics" or "crime statistics" or "safety data"
+- "how safe is [location]" or "safety report for [location]"
+- "show me safety information" or "safety details"
+- Or any request to see comprehensive safety analysis for a specific location
+
+You MUST call the show_safety_analysis function. If the user provides a location, use it. If they don't specify a location, ask them which location they'd like to analyze, or use their current location/destination if available from previous conversation.
+
+Example:
+User: "Show safety analysis"
+You: "I'd be happy to show you the safety analysis. Which location would you like me to analyze? [If they provide a location, CALL show_safety_analysis with that location]"
+
+CLOSING OVERLAYS:
+When users say:
+- "close" or "close that" or "close it"
+- "close the overlay" or "close the images" or "close the map"
+- "close safety analysis" or "close street view"
+- "hide that" or "hide the overlay"
+- "go back" or "back" (when an overlay is open)
+- "dismiss" or "close everything"
+- Or any variation asking to close or hide an open overlay
+
+You MUST call the close_overlay function. If the user specifies which overlay (e.g., "close the images"), use that specific type. Otherwise, use "all" to close everything. This allows users to control the interface completely by voice without touching the keyboard.
+
+Example:
+User: "Close that"
+You: "I'll close the overlay for you. [CALL close_overlay with overlay_type="all"]"
+
+User: "Close the map"
+You: "I'll close the map for you. [CALL close_overlay with overlay_type="map"]"
+
+ENDING CONVERSATION:
+When users say:
+- "end conversation" or "end the conversation"
+- "stop" or "stop talking" or "stop the conversation"
+- "goodbye" or "bye" or "see you later"
+- "that's all" or "I'm done" or "we're done"
+- "finish" or "end session" or "disconnect"
+- Or any variation asking to end or stop the conversation
+
+You MUST call the end_conversation function. Be polite and say goodbye before calling it.
+
+Example:
+User: "End conversation"
+You: "Thank you for using Urban Buzz AI! Have a great day! [CALL end_conversation]"
+
+User: "That's all, thanks"
+You: "You're welcome! It was great helping you. Goodbye! [CALL end_conversation]"
 
 MARTA STATION FINDER:
 When users ask about:
@@ -227,54 +315,130 @@ When users ask about:
 - "how to get to MARTA" or "MARTA from here"
 - "find MARTA station" or any variation asking about MARTA transit stations
 
-You MUST call the find_marta_station function. FIRST try to get their live location using get_user_location. If that's not available, use location coordinates from a previous route or geocode their address using geocode_address, then call find_marta_station.
+You MUST call the find_marta_station function. If you have the user's current location coordinates (from a previous route or geocode), use those. Otherwise, first ask the user for their location or geocode their address using geocode_address, then call find_marta_station with the coordinates or address.
 
 Example:
 User: "What's the closest MARTA station?"
 You: "Let me find the closest MARTA station for you. [If you have coordinates, CALL find_marta_station with location. Otherwise, geocode the address first, then call find_marta_station] The closest MARTA station is..."
 
-FINDING NEARBY PLACES:
+NEARBY PLACES FINDER:
 When users ask about:
-- "nearest" or "closest" (e.g., "nearest Chick-fil-A", "closest gas station")
-- "best" or "highest rated" (e.g., "best restaurant", "highest rated coffee shop")
-- Specific places (e.g., "Chick-fil-A", "Starbucks", "McDonald's")
-- Types of places (e.g., "restaurant", "gas station", "coffee shop", "pharmacy")
-- "where can I find" or "where is" questions about businesses
+- "nearest" or "closest" places (e.g., "nearest Chick-fil-A", "closest coffee shop", "nearest gas station")
+- "best rated" places (e.g., "best rated restaurant", "highest rated pizza place")
+- "nearby" places (e.g., "nearby restaurants", "nearby stores", "nearby pharmacy")
+- Any question about finding businesses, restaurants, stores, services near a location
 
-You MUST call the find_nearby_places function. FIRST try to get their live location using get_user_location. If that's not available, use location coordinates from a previous route or geocode their address using geocode_address, then call find_nearby_places.
+You MUST call the find_nearby_places function. If you have the user's current location coordinates (from a previous route or geocode), use those. Otherwise, first geocode their address using geocode_address, then call find_nearby_places with the coordinates or address and the search query.
 
-When presenting results:
-- Always mention the rating and number of reviews: "The best rated option is [name] with a 4.5-star rating from 200 reviews"
-- Include distance and walking time: "It's about 0.3 miles away, roughly a 5-minute walk"
-- If multiple options, present the top 2-3 with ratings
-- Offer to show directions: "Would you like me to show you how to get there?"
+The function returns results sorted by rating (best first) and distance, so you can tell users about the best-rated options.
 
 Example:
 User: "Where's the nearest Chick-fil-A?"
-You: "Let me find the nearest Chick-fil-A for you. [CALL find_nearby_places with query='Chick-fil-A' and location] I found one at [address] with a [rating]-star rating. It's about [distance] away, roughly [duration] by foot. Would you like directions?"
+You: "Let me find the nearest Chick-fil-A for you. [CALL find_nearby_places with location and query='Chick-fil-A'] The nearest Chick-fil-A is [name], located at [address]. It has a [rating] star rating with [number] reviews, and it's about [distance] away ([duration] by car)."
 
 User: "What's the best rated restaurant nearby?"
-You: "Let me find the best rated restaurants near you. [CALL find_nearby_places with query='restaurant' and location] The top option is [name] with a [rating]-star rating from [count] reviews, located at [address]. It's about [distance] away. Would you like me to show you how to get there?"
+You: "Let me find the best rated restaurants near you. [CALL find_nearby_places with location and query='restaurant'] The best rated restaurant nearby is [name] with a [rating] star rating..."
 
-Conversation Style:
-- Always be POLITE and RESPECTFUL - use "please", "thank you", "you're welcome" naturally
-- Start by politely asking their current location and destination: "Could you please tell me your starting point?" or "Where would you like to go, please?"
-- Give ONE clear direction at a time using LANDMARKS, not street names
-- Use polite, conversational phrases with visual cues: 
-  * "Please head straight until you see the blue building on your right"
-  * "You'll want to turn right at the coffee shop, please"
-  * "Walk past the park and turn left at the big sign"
-  * "Keep going until you see the gas station, then turn right"
-- NEVER say street names like "Turn left on Main Street" or "Go down Highway 5"
-- Instead say: "Turn left at the red building" or "Go straight past the grocery store"
-- Check in politely: "Do you see the park on your left? Please let me know if you need any clarification."
-- Be supportive and polite: "You're doing great! Almost there. Please let me know if you need any help."
-- Always generate a map when giving directions
-- When users want to see images, call show_street_view
-- When users ask about route features, call analyze_route
-- Thank users for their patience: "Thank you for your patience" or "I appreciate you using our service"
-- NEVER mention you're an AI
-- Remember: Landmarks and visual cues are easier than street names - always use what people can SEE`,
+DISABILITY ASSISTANCE - CRITICAL:
+When assisting users with disabilities, provide EXTREMELY DETAILED analysis:
+
+For Wheelchair Users:
+- Curb cuts and ramps: Describe every curb cut, ramp, and accessible entry point along the route
+- Sidewalk conditions: Detail sidewalk width, surface quality, cracks, obstacles, and maintenance
+- Elevation changes: Warn about hills, slopes, and elevation changes that may be challenging
+- Accessible crossings: Identify all accessible crosswalks, pedestrian signals, and crossing points
+- Obstacles: Mention every potential obstacle - poles, signs, bins, construction, parked vehicles
+- Rest areas: Point out benches, rest stops, and places to pause along the route
+- Building access: Note accessible entrances, automatic doors, and step-free access
+
+For Visual Impairments:
+- Landmarks: Provide detailed descriptions of landmarks, buildings, and visual cues
+- Audio cues: Mention traffic sounds, pedestrian signals, and environmental audio cues
+- Tactile guidance: Note tactile paving, guide paths, and physical navigation aids
+- Lighting: Describe lighting conditions, especially at night or in tunnels
+- Clear paths: Identify clear, unobstructed paths and warn about narrow passages
+
+For Mobility Impairments:
+- Step-free routes: Prioritize routes without stairs or steps
+- Elevators and lifts: Identify all elevators, lifts, and escalators along the route
+- Seating: Point out benches, seating areas, and rest stops
+- Distance: Provide accurate distances between key points
+- Surface conditions: Detail pavement quality, slippery surfaces, and uneven terrain
+
+For All Disabilities:
+- Be patient and thorough - Provide more detail than you would for able-bodied users
+- Use clear, descriptive language - Describe exactly what they'll encounter
+- Anticipate challenges - Warn about potential difficulties before they encounter them
+- Offer alternatives - If a route has accessibility issues, suggest alternative routes
+- Be encouraging - Acknowledge challenges but remain positive and supportive
+
+DEEP CURVE ANALYSIS - CRITICAL:
+When discussing curves, turns, or bends, provide EXTREMELY DETAILED analysis:
+
+For EVERY curve along the route, describe:
+1. Location: Which step/pit stop the curve is at (e.g., "At Step 3, approximately 50 meters after the coffee shop")
+2. Sharpness: 
+   - Gentle curve (wide, gradual turn)
+   - Moderate curve (noticeable turn, but manageable)
+   - Sharp curve (tight turn requiring slower speed)
+   - Very sharp curve (extremely tight, potentially dangerous)
+3. Radius: Estimate the curve radius if possible (e.g., "approximately 10-meter radius")
+4. Visibility:
+   - Clear visibility ahead (can see oncoming traffic/pedestrians)
+   - Limited visibility (partial obstruction)
+   - Poor visibility (blind curve, cannot see around the corner)
+5. Direction: Left turn, right turn, or S-curve
+6. Surface conditions: Road/path surface quality at the curve
+7. Accessibility concerns:
+   - For wheelchair users: Is the curve wide enough? Are there obstacles?
+   - For visual impairments: Are there tactile cues? Is the path clearly marked?
+   - For mobility impairments: Is the curve on a slope? Are there handrails?
+8. Safety factors:
+   - Traffic patterns at the curve
+   - Pedestrian safety considerations
+   - Lighting conditions
+   - Signage and warnings
+9. Landmarks at the curve: What will they see at or near the curve to help identify it
+10. Recommendations: Speed suggestions, cautionary advice, alternative paths if needed
+
+Example of detailed curve analysis:
+"At Step 4, about 30 meters after you pass the red brick building on your left, you'll encounter a moderate right-hand curve. The curve has approximately a 15-meter radius, so it's not too sharp, but you'll need to slow down slightly. Visibility is good - you can see about 50 meters ahead around the curve. The road surface is smooth asphalt with good traction. For wheelchair users, the curve is wide enough with no obstacles, and there's a well-maintained sidewalk throughout. There's a blue sign on the right side of the curve that says 'Slow' - that's your landmark. The curve is well-lit at night with streetlights on both sides. I recommend taking this curve at a comfortable walking pace, and you'll see a small park on your left as you complete the turn."
+
+USING EXISTING PIT STOP DATA:
+- When you've called analyze_route or show_street_view, you receive detailed pit stop information
+- This includes: step numbers, addresses, coordinates, images, and analysis for each pit stop
+- DO NOT call analyze_route again if you already have this data - use what you know
+- Reference specific steps: "At Step 2, the analysis shows..." or "According to the pit stop data at Step 5..."
+- When users ask about accessibility, curves, or route conditions, reference the specific pit stops you already know about
+- Provide step-by-step guidance using the pit stop data: "Starting from Step 1, you'll encounter... then at Step 2..."
+
+Professional Communication Style:
+- Always be PROFESSIONAL and EFFICIENT - use "please", "thank you" appropriately
+- Start by professionally requesting route information: "I can help optimize your route. Please provide your starting location and destination." or "What's your pickup and delivery address?"
+- Provide clear, actionable directions using LANDMARKS for easier navigation
+- Use professional, efficient language with visual cues: 
+  * "Proceed straight until you see the blue building on your right"
+  * "Turn right at the coffee shop"
+  * "Continue past the park and turn left at the large sign"
+  * "Proceed until you see the gas station, then turn right"
+- NEVER use street names like "Turn left on Main Street" - use landmarks instead
+- Use landmarks: "Turn left at the red building" or "Continue straight past the grocery store"
+- Check in professionally: "Do you see the park on your left? Let me know if you need clarification."
+- Be supportive and professional: "You're on track. Almost there. Let me know if you need any assistance."
+- Always generate a map when providing route directions
+- When users request visual confirmation, call show_street_view
+- When users need route analysis, call analyze_route
+- When users need nearby locations, use find_nearby_places for business information
+- Acknowledge professionally: "Thank you" or "I appreciate your business"
+- NEVER mention you're an AI - present as a professional navigation system
+- Remember: Landmarks and visual cues are more practical than street names for delivery operations
+- Be proactive: Offer route optimization and analysis when relevant
+- Provide context: Include relevant details about route conditions and delivery considerations
+- Be THOROUGH for accessibility - Provide detailed information for accessible delivery routes
+- Provide COMPREHENSIVE route analysis - Detailed analysis of all route factors (curves, accessibility, safety, efficiency)
+- Use existing route data efficiently - Reference known route information instead of re-analyzing
+- Support multiple locations - Handle various address formats including UK postcodes and international addresses
+- When users mention disabilities or ask about accessibility, provide comprehensive, step-by-step analysis using pit stop data`,
             voice: 'sage', // Previous voice that was better
             temperature: 0.8, // Higher for more natural, conversational speech
             input_audio_format: 'pcm16',
@@ -419,7 +583,7 @@ Conversation Style:
               {
                 type: 'function',
                 name: 'find_nearby_places',
-                description: 'Find nearby places like restaurants, stores, gas stations, etc. Use this when users ask about "nearest", "closest", "best", "highest rated", or want to find specific places like "Chick-fil-A", "Starbucks", "gas station", etc. Returns places sorted by rating and distance.',
+                description: 'Find nearby places like restaurants, stores, gas stations, etc. with ratings and distance. Use this when users ask about "nearest", "closest", "best rated", "nearby" places like restaurants, stores, or any business. Returns results sorted by rating (best first) and distance.',
                 parameters: {
                   type: 'object',
                   properties: {
@@ -429,7 +593,7 @@ Conversation Style:
                         lat: { type: 'number', description: 'Latitude of the location' },
                         lng: { type: 'number', description: 'Longitude of the location' },
                       },
-                      description: 'Coordinates of the location to search from. If not provided, use address instead.',
+                      description: 'Coordinates of the location. If not provided, use address instead.',
                     },
                     address: {
                       type: 'string',
@@ -437,11 +601,11 @@ Conversation Style:
                     },
                     query: {
                       type: 'string',
-                      description: 'What to search for (e.g., "Chick-fil-A", "restaurant", "gas station", "coffee", "best rated restaurant").',
+                      description: 'What to search for (e.g., "Chick-fil-A", "coffee shop", "gas station", "restaurant", "grocery store", "pharmacy").',
                     },
                     type: {
                       type: 'string',
-                      description: 'Optional: Type of place (restaurant, gas_station, cafe, hospital, etc.). Usually inferred from query.',
+                      description: 'Optional place type (e.g., "restaurant", "store", "gas_station", "pharmacy", "hospital").',
                     },
                   },
                   required: ['query'],
@@ -449,8 +613,24 @@ Conversation Style:
               },
               {
                 type: 'function',
-                name: 'get_user_location',
-                description: 'Get the user\'s current live location using their device\'s GPS/location services. Use this when you need the user\'s current location and they haven\'t provided it. This will ask for location permission and return their current coordinates. Call this BEFORE other functions that need location (like find_nearby_places, find_marta_station, generate_map) if you don\'t have the user\'s location yet.',
+                name: 'close_overlay',
+                description: 'Close any open overlay windows (Street View images, Safety Analysis, Maps, etc.). Call this when users say "close", "close that", "close the overlay", "hide that", "close the images", "close the map", "close the safety analysis", "go back", or any variation asking to close or hide an open overlay.',
+                parameters: {
+                  type: 'object',
+                  properties: {
+                    overlay_type: {
+                      type: 'string',
+                      description: 'Type of overlay to close: "street_view", "safety_analysis", "map", or "all" to close everything.',
+                      enum: ['street_view', 'safety_analysis', 'map', 'all']
+                    },
+                  },
+                  required: ['overlay_type'],
+                },
+              },
+              {
+                type: 'function',
+                name: 'end_conversation',
+                description: 'End the voice conversation session. Call this when users say "end conversation", "end", "stop", "goodbye", "bye", "that\'s all", "I\'m done", "we\'re done", "finish", or any variation asking to end or stop the conversation.',
                 parameters: {
                   type: 'object',
                   properties: {},
@@ -491,12 +671,46 @@ Conversation Style:
               if (name === 'geocode_address') {
                 console.log('[v0] Geocoding address:', args.address);
                 const address = args.address;
+                
+                if (!address || address.trim() === '') {
+                  if (dataChannelRef.current) {
+                    const resultEvent = {
+                      type: 'conversation.item.create',
+                      item: {
+                        type: 'function_call_output',
+                        call_id: callId,
+                        output: JSON.stringify({ 
+                          error: 'Please provide an address or location name to geocode.' 
+                        }),
+                      },
+                    };
+                    dataChannelRef.current.send(JSON.stringify(resultEvent));
+                    
+                    const responseCreate = {
+                      type: 'response.create',
+                    };
+                    dataChannelRef.current.send(JSON.stringify(responseCreate));
+                  }
+                  return;
+                }
+                
                 const geocodeUrl = `/api/geocode?address=${encodeURIComponent(address)}`;
                 
                 fetch(geocodeUrl)
-                  .then(res => res.json())
+                  .then(res => {
+                    if (!res.ok) {
+                      throw new Error(`Geocoding API returned status ${res.status}`);
+                    }
+                    return res.json();
+                  })
                   .then(geocodeData => {
-                    if (geocodeData.status === 'OK' && geocodeData.results && geocodeData.results[0]) {
+                    console.log('[v0] Geocoding response:', geocodeData);
+                    
+                    if (geocodeData.error) {
+                      throw new Error(geocodeData.error);
+                    }
+                    
+                    if (geocodeData.status === 'OK' && geocodeData.results && geocodeData.results.length > 0) {
                       const location = geocodeData.results[0].geometry.location;
                       const result = {
                         lat: location.lat,
@@ -521,12 +735,18 @@ Conversation Style:
                         dataChannelRef.current.send(JSON.stringify(responseCreate));
                         console.log('[v0] Sent geocode result:', result);
                       }
+                    } else if (geocodeData.status === 'ZERO_RESULTS') {
+                      throw new Error(`Could not find the location "${address}". Please try a more specific address or include the city and state.`);
+                    } else if (geocodeData.status === 'REQUEST_DENIED') {
+                      throw new Error('Geocoding request was denied. Please check your Google Maps API key permissions.');
                     } else {
-                      throw new Error('Geocoding failed');
+                      throw new Error(`Geocoding failed: ${geocodeData.status || 'Unknown error'}. Please try a different address.`);
                     }
                   })
                   .catch(err => {
                     console.error('[v0] Geocoding error:', err);
+                    const errorMessage = err.message || 'Failed to geocode address. Please provide a more specific location with city and state.';
+                    
                     if (dataChannelRef.current) {
                       const resultEvent = {
                         type: 'conversation.item.create',
@@ -534,7 +754,8 @@ Conversation Style:
                           type: 'function_call_output',
                           call_id: callId,
                           output: JSON.stringify({ 
-                            error: 'Failed to geocode address. Please provide a more specific location.' 
+                            error: errorMessage,
+                            suggestion: 'Try providing a more complete address, including city and state (e.g., "120 Piedmont Ave NE, Atlanta, GA")'
                           }),
                         },
                       };
@@ -927,6 +1148,7 @@ Detailed analysis available for ${analysisData.total_stops_analyzed} locations a
                 // Determine location - use provided location, or geocode address, or use existing route origin
                 let locationToUse = args.location
                 let addressToUse = args.address
+                const query = args.query
                 
                 // If no location provided but we have route data, use origin
                 if (!locationToUse && !addressToUse && routeData.origin) {
@@ -943,7 +1165,7 @@ Detailed analysis available for ${analysisData.total_stops_analyzed} locations a
                       if (geocodeData.status === 'OK' && geocodeData.results && geocodeData.results[0]) {
                         const loc = geocodeData.results[0].geometry.location
                         locationToUse = { lat: loc.lat, lng: loc.lng }
-                        findNearbyPlaces(locationToUse, args.query, args.type, callId)
+                        findNearbyPlaces(locationToUse, addressToUse, query, args.type, callId)
                       } else {
                         throw new Error('Could not find the location')
                       }
@@ -971,14 +1193,11 @@ Detailed analysis available for ${analysisData.total_stops_analyzed} locations a
                       }
                     })
                 } else {
-                  findNearbyPlaces(locationToUse, args.query, args.type, callId)
+                  findNearbyPlaces(locationToUse, addressToUse, query, args.type, callId)
                 }
                 
-                function findNearbyPlaces(location: any, query: string, type: string | undefined, callId: string) {
-                  // Use provided location, or fall back to routeData.origin if available
-                  const locationToSearch = location || routeData.origin
-                  
-                  if (!locationToSearch) {
+                function findNearbyPlaces(location: any, address: string | undefined, query: string, type: string | undefined, callId: string) {
+                  if (!location) {
                     if (dataChannelRef.current) {
                       const resultEvent = {
                         type: 'conversation.item.create',
@@ -987,7 +1206,7 @@ Detailed analysis available for ${analysisData.total_stops_analyzed} locations a
                           call_id: callId,
                           output: JSON.stringify({ 
                             success: false, 
-                            error: 'Please provide a location to search from. I can get your current location, or you can tell me your address.' 
+                            error: 'Please provide a location to search for nearby places.' 
                           }),
                         },
                       }
@@ -1005,7 +1224,8 @@ Detailed analysis available for ${analysisData.total_stops_analyzed} locations a
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                      location: locationToSearch,
+                      location: location,
+                      address: address,
                       query: query,
                       type: type,
                     }),
@@ -1037,65 +1257,14 @@ Detailed analysis available for ${analysisData.total_stops_analyzed} locations a
                       }
 
                       // Format the response for the AI
-                      const places = placesData.places
-                      if (places.length === 0) {
-                        const responseText = `I couldn't find any ${query} nearby. Try expanding your search or using a different location.`
-                        
-                        if (dataChannelRef.current) {
-                          const resultEvent = {
-                            type: 'conversation.item.create',
-                            item: {
-                              type: 'function_call_output',
-                              call_id: callId,
-                              output: JSON.stringify({ 
-                                success: false,
-                                message: responseText,
-                                places: [],
-                              }),
-                            },
-                          }
-                          dataChannelRef.current.send(JSON.stringify(resultEvent))
-                          
-                          const responseCreate = {
-                            type: 'response.create',
-                          }
-                          dataChannelRef.current.send(JSON.stringify(responseCreate))
-                        }
-                        return
-                      }
-
-                      const topPlace = places[0]
-                      let responseText = `I found ${places.length} ${query}${places.length > 1 ? 's' : ''} nearby. `
+                      const bestMatch = placesData.best_match
+                      const allResults = placesData.results
                       
-                      if (places.length === 1) {
-                        responseText = `The ${query} is ${topPlace.name}, located at ${topPlace.address}. It has a ${topPlace.rating}-star rating from ${topPlace.rating_count} reviews. It's approximately ${topPlace.distance} away (about ${topPlace.duration} by foot).`
-                      } else {
-                        responseText += `The best rated option is ${topPlace.name} with a ${topPlace.rating}-star rating from ${topPlace.rating_count} reviews, located at ${topPlace.address}. It's about ${topPlace.distance} away (${topPlace.duration} by foot).`
-                        if (places.length > 1) {
-                          responseText += ` I also found ${places[1].name} with a ${places[1].rating}-star rating, ${places[1].distance} away.`
-                        }
-                      }
+                      let responseText = `The nearest ${query} is ${bestMatch.name}, located at ${bestMatch.address}. `
+                      responseText += `It has a ${bestMatch.rating} star rating with ${bestMatch.user_ratings_total} reviews, and it's about ${bestMatch.distance} away (${bestMatch.duration} by car).`
                       
-                      // Automatically show map with route to the top place if we have user location
-                      const userLocation = locationToSearch || routeData.origin
-                      if (userLocation && topPlace.location) {
-                        setRouteData({
-                          origin: {
-                            lat: userLocation.lat,
-                            lng: userLocation.lng,
-                            label: userLocation.label || 'Your Location',
-                          },
-                          destination: {
-                            lat: topPlace.location.lat,
-                            lng: topPlace.location.lng,
-                            label: topPlace.name,
-                          },
-                        })
-                        setShowDirections(true)
-                        responseText += ' I\'ve displayed a map showing you how to get there.'
-                        console.log('[v0] Displaying map to recommended place:', topPlace.name, 'from location:', userLocation)
-                      } else {
-                        responseText += ' Would you like me to show you directions to get there?'
+                      if (allResults.length > 1) {
+                        responseText += ` I found ${allResults.length} options nearby. Would you like to hear about the other options?`
                       }
                       
                       if (dataChannelRef.current) {
@@ -1106,8 +1275,8 @@ Detailed analysis available for ${analysisData.total_stops_analyzed} locations a
                             call_id: callId,
                             output: JSON.stringify({ 
                               success: true,
-                              places: places,
-                              top_place: topPlace,
+                              best_match: bestMatch,
+                              all_results: allResults,
                               message: responseText,
                             }),
                           },
@@ -1118,7 +1287,7 @@ Detailed analysis available for ${analysisData.total_stops_analyzed} locations a
                           type: 'response.create',
                         }
                         dataChannelRef.current.send(JSON.stringify(responseCreate))
-                        console.log('[v0] Sent nearby places result:', places)
+                        console.log('[v0] Sent nearby places result:', bestMatch)
                       }
                     })
                     .catch(err => {
@@ -1144,10 +1313,12 @@ Detailed analysis available for ${analysisData.total_stops_analyzed} locations a
                       }
                     })
                 }
-              } else if (name === 'get_user_location') {
-                console.log('[v0] Getting user location');
+              } else if (name === 'show_safety_analysis') {
+                console.log('[v0] Showing safety analysis for:', args);
                 
-                if (!navigator.geolocation) {
+                const location = args.location;
+                
+                if (!location) {
                   if (dataChannelRef.current) {
                     const resultEvent = {
                       type: 'conversation.item.create',
@@ -1156,140 +1327,112 @@ Detailed analysis available for ${analysisData.total_stops_analyzed} locations a
                         call_id: callId,
                         output: JSON.stringify({ 
                           success: false, 
-                          error: 'Geolocation is not supported by your browser. Please provide your location manually.' 
+                          error: 'Please provide a location to analyze. For example: "Atlanta, GA" or "Times Square".' 
                         }),
                       },
-                    }
-                    dataChannelRef.current.send(JSON.stringify(resultEvent))
+                    };
+                    dataChannelRef.current.send(JSON.stringify(resultEvent));
                     
                     const responseCreate = {
                       type: 'response.create',
-                    }
-                    dataChannelRef.current.send(JSON.stringify(responseCreate))
+                    };
+                    dataChannelRef.current.send(JSON.stringify(responseCreate));
                   }
-                  return
+                  return;
                 }
-
-                navigator.geolocation.getCurrentPosition(
-                  (position) => {
-                    const location = {
-                      lat: position.coords.latitude,
-                      lng: position.coords.longitude,
-                    }
-                    
-                    // Reverse geocode to get address
-                    fetch(`/api/reverse-geocode?lat=${location.lat}&lng=${location.lng}`)
-                      .then(res => res.json())
-                      .then(geocodeData => {
-                        let address = 'Your current location'
-                        if (geocodeData.status === 'OK' && geocodeData.results && geocodeData.results[0]) {
-                          address = geocodeData.results[0].formatted_address
-                        }
-                        
-                        // Update route data with user's location
-                        setRouteData(prev => ({
-                          ...prev,
-                          origin: {
-                            ...location,
-                            label: address,
-                          },
-                        }))
-                        
-                        if (dataChannelRef.current) {
-                          const resultEvent = {
-                            type: 'conversation.item.create',
-                            item: {
-                              type: 'function_call_output',
-                              call_id: callId,
-                              output: JSON.stringify({ 
-                                success: true,
-                                location: location,
-                                address: address,
-                                message: `I've got your location! You're at ${address}. How can I help you navigate?`,
-                              }),
-                            },
-                          }
-                          dataChannelRef.current.send(JSON.stringify(resultEvent))
-                          
-                          const responseCreate = {
-                            type: 'response.create',
-                          }
-                          dataChannelRef.current.send(JSON.stringify(responseCreate))
-                          console.log('[v0] Sent user location result:', location)
-                        }
-                      })
-                      .catch(err => {
-                        console.error('[v0] Error reverse geocoding location:', err)
-                        // Still return location even if reverse geocoding fails
-                        setRouteData(prev => ({
-                          ...prev,
-                          origin: {
-                            ...location,
-                            label: 'Your current location',
-                          },
-                        }))
-                        
-                        if (dataChannelRef.current) {
-                          const resultEvent = {
-                            type: 'conversation.item.create',
-                            item: {
-                              type: 'function_call_output',
-                              call_id: callId,
-                              output: JSON.stringify({ 
-                                success: true,
-                                location: location,
-                                address: 'Your current location',
-                                message: `I've got your location! How can I help you navigate?`,
-                              }),
-                            },
-                          }
-                          dataChannelRef.current.send(JSON.stringify(resultEvent))
-                          
-                          const responseCreate = {
-                            type: 'response.create',
-                          }
-                          dataChannelRef.current.send(JSON.stringify(responseCreate))
-                        }
-                      })
-                  },
-                  (error) => {
-                    console.error('[v0] Geolocation error:', error)
-                    let errorMessage = 'Could not get your location'
-                    
-                    if (error.code === error.PERMISSION_DENIED) {
-                      errorMessage = 'Location permission was denied. Please allow location access or provide your address manually.'
-                    } else if (error.code === error.POSITION_UNAVAILABLE) {
-                      errorMessage = 'Location information is unavailable. Please provide your address manually.'
-                    } else if (error.code === error.TIMEOUT) {
-                      errorMessage = 'Location request timed out. Please try again or provide your address manually.'
-                    }
-                    
-                    if (dataChannelRef.current) {
-                      const resultEvent = {
-                        type: 'conversation.item.create',
-                        item: {
-                          type: 'function_call_output',
-                          call_id: callId,
-                          output: JSON.stringify({ 
-                            success: false, 
-                            error: errorMessage 
-                          }),
-                        },
-                      }
-                      dataChannelRef.current.send(JSON.stringify(resultEvent))
-                      
-                      const responseCreate = {
-                        type: 'response.create',
-                      }
-                      dataChannelRef.current.send(JSON.stringify(responseCreate))
-                    }
-                  },
-                  {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0,
-                  }
-                )
+                
+                // Show safety analysis overlay
+                setSafetyAnalysisLocation(location);
+                setShowSafetyAnalysis(true);
+                
+                // Return success to AI
+                if (dataChannelRef.current) {
+                  const resultEvent = {
+                    type: 'conversation.item.create',
+                    item: {
+                      type: 'function_call_output',
+                      call_id: callId,
+                      output: JSON.stringify({ 
+                        success: true,
+                        message: `I've opened the safety analysis for ${location}. You'll see comprehensive safety statistics, crime data, safety trends, and recommendations for this location.`,
+                        location: location,
+                      }),
+                    },
+                  };
+                  dataChannelRef.current.send(JSON.stringify(resultEvent));
+                  
+                  const responseCreate = {
+                    type: 'response.create',
+                  };
+                  dataChannelRef.current.send(JSON.stringify(responseCreate));
+                  console.log('[v0] Showing safety analysis overlay for:', location);
+                }
+              } else if (name === 'close_overlay') {
+                console.log('[v0] Closing overlay:', args);
+                
+                const overlayType = args.overlay_type || 'all';
+                
+                if (overlayType === 'all' || overlayType === 'street_view') {
+                  setShowStreetView(false);
+                }
+                if (overlayType === 'all' || overlayType === 'safety_analysis') {
+                  setShowSafetyAnalysis(false);
+                  setSafetyAnalysisLocation('');
+                }
+                if (overlayType === 'all' || overlayType === 'map') {
+                  setShowDirections(false);
+                }
+                
+                // Return success to AI
+                if (dataChannelRef.current) {
+                  const resultEvent = {
+                    type: 'conversation.item.create',
+                    item: {
+                      type: 'function_call_output',
+                      call_id: callId,
+                      output: JSON.stringify({ 
+                        success: true,
+                        message: `I've closed the ${overlayType === 'all' ? 'overlays' : overlayType.replace('_', ' ')}.`,
+                        closed: overlayType
+                      }),
+                    },
+                  };
+                  dataChannelRef.current.send(JSON.stringify(resultEvent));
+                  
+                  const responseCreate = {
+                    type: 'response.create',
+                  };
+                  dataChannelRef.current.send(JSON.stringify(responseCreate));
+                  console.log('[v0] Closed overlay:', overlayType);
+                }
+              } else if (name === 'end_conversation') {
+                console.log('[v0] Ending conversation');
+                
+                // Return success to AI first
+                if (dataChannelRef.current) {
+                  const resultEvent = {
+                    type: 'conversation.item.create',
+                    item: {
+                      type: 'function_call_output',
+                      call_id: callId,
+                      output: JSON.stringify({ 
+                        success: true,
+                        message: 'Conversation ended. Thank you for using Urban Buzz AI!',
+                      }),
+                    },
+                  };
+                  dataChannelRef.current.send(JSON.stringify(resultEvent));
+                  
+                  // Small delay before ending to let the message go through
+                  setTimeout(() => {
+                    stopVoiceSession();
+                  }, 500);
+                  
+                  console.log('[v0] Conversation ending');
+                } else {
+                  // If data channel is already closed, just stop the session
+                  stopVoiceSession();
+                }
               }
             } catch (err) {
               console.error('[v0] Error handling function call:', err);
@@ -1514,6 +1657,16 @@ Detailed analysis available for ${analysisData.total_stops_analyzed} locations a
             </div>
           </div>
         </div>
+      )}
+
+      {showSafetyAnalysis && safetyAnalysisLocation && (
+        <SafetyAnalysisOverlay
+          location={safetyAnalysisLocation}
+          onClose={() => {
+            setShowSafetyAnalysis(false);
+            setSafetyAnalysisLocation('');
+          }}
+        />
       )}
 
       <div className="w-full h-[500px] rounded-lg overflow-hidden bg-black relative">

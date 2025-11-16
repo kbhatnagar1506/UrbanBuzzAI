@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { location, query, type, radius = 5000 } = await request.json()
+    const { location, query, type } = await request.json()
 
     let lat: number
     let lng: number
@@ -34,54 +34,13 @@ export async function POST(request: NextRequest) {
 
     // Build search query
     let searchQuery = query || ''
-    let placeType = type || ''
-
-    // Map common queries to Google Places types
-    const typeMap: Record<string, string> = {
-      'restaurant': 'restaurant',
-      'food': 'restaurant',
-      'chickfila': 'restaurant',
-      'chick-fil-a': 'restaurant',
-      'mcdonalds': 'restaurant',
-      'starbucks': 'cafe',
-      'coffee': 'cafe',
-      'gas': 'gas_station',
-      'gas station': 'gas_station',
-      'hospital': 'hospital',
-      'pharmacy': 'pharmacy',
-      'bank': 'bank',
-      'atm': 'atm',
-      'hotel': 'lodging',
-      'park': 'park',
-      'gym': 'gym',
-      'grocery': 'supermarket',
-      'store': 'store',
+    if (type) {
+      searchQuery = `${searchQuery} ${type}`.trim()
     }
 
-    // Check if query matches a type
-    const lowerQuery = query?.toLowerCase() || ''
-    for (const [key, value] of Object.entries(typeMap)) {
-      if (lowerQuery.includes(key)) {
-        placeType = value
-        break
-      }
-    }
-
-    // Search for nearby places
-    let placesUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&key=${apiKey}`
+    // Search for nearby places using Places API (Text Search or Nearby Search)
+    const placesUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&keyword=${encodeURIComponent(searchQuery)}&key=${apiKey}`
     
-    if (placeType) {
-      placesUrl += `&type=${placeType}`
-    }
-    
-    if (searchQuery && !placeType) {
-      // Use text search if we have a query but no type
-      placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&location=${lat},${lng}&radius=${radius}&key=${apiKey}`
-    } else if (searchQuery && placeType) {
-      // Use text search with type
-      placesUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&location=${lat},${lng}&radius=${radius}&type=${placeType}&key=${apiKey}`
-    }
-
     const placesRes = await fetch(placesUrl)
     const placesData = await placesRes.json()
 
@@ -93,22 +52,23 @@ export async function POST(request: NextRequest) {
     }
 
     if (!placesData.results || placesData.results.length === 0) {
-      return NextResponse.json({
-        success: false,
-        message: `No ${query || 'places'} found nearby. Try expanding your search radius or using a different location.`,
-        places: [],
-      })
+      return NextResponse.json(
+        { 
+          success: false,
+          message: `No ${query || 'places'} found nearby. Try a different search term or location.` 
+        },
+        { status: 200 }
+      )
     }
 
     // Sort by rating (highest first) and distance
     const sortedResults = placesData.results
       .filter((place: any) => place.rating) // Only include places with ratings
       .sort((a: any, b: any) => {
-        // Sort by rating first (descending), then by distance
+        // Sort by rating first (highest), then by distance
         if (b.rating !== a.rating) {
           return b.rating - a.rating
         }
-        // Calculate distance (simple approximation)
         const distA = Math.sqrt(
           Math.pow(a.geometry.location.lat - lat, 2) + 
           Math.pow(a.geometry.location.lng - lng, 2)
@@ -120,11 +80,20 @@ export async function POST(request: NextRequest) {
         return distA - distB
       })
 
-    // Get distance and duration for top results
-    const topPlaces = sortedResults.slice(0, 5)
-    const placesWithDetails = await Promise.all(
-      topPlaces.map(async (place: any) => {
-        // Get distance using Distance Matrix API
+    if (sortedResults.length === 0) {
+      return NextResponse.json(
+        { 
+          success: false,
+          message: `No ${query || 'places'} with ratings found nearby.` 
+        },
+        { status: 200 }
+      )
+    }
+
+    // Get distance and duration for the top results
+    const topResults = sortedResults.slice(0, 5)
+    const resultsWithDistance = await Promise.all(
+      topResults.map(async (place: any) => {
         const distanceUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${lat},${lng}&destinations=${place.geometry.location.lat},${place.geometry.location.lng}&units=imperial&key=${apiKey}`
         const distanceRes = await fetch(distanceUrl)
         const distanceData = await distanceRes.json()
@@ -135,12 +104,12 @@ export async function POST(request: NextRequest) {
         return {
           name: place.name,
           address: place.vicinity || place.formatted_address || 'Address not available',
+          rating: place.rating,
+          user_ratings_total: place.user_ratings_total || 0,
           location: {
             lat: place.geometry.location.lat,
             lng: place.geometry.location.lng,
           },
-          rating: place.rating,
-          rating_count: place.user_ratings_total || 0,
           distance: distance,
           duration: duration,
           place_id: place.place_id,
@@ -151,9 +120,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      places: placesWithDetails,
-      query: query,
-      type: placeType,
+      query: query || 'places',
+      results: resultsWithDistance,
+      best_match: resultsWithDistance[0], // Highest rated, closest
     })
   } catch (error) {
     console.error('Error finding nearby places:', error)
@@ -166,4 +135,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
 

@@ -15,12 +15,36 @@ export async function GET(request: NextRequest) {
   try {
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`
     const response = await fetch(url)
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Geocoding API error:', response.status, errorText)
+      return NextResponse.json(
+        { 
+          error: `Geocoding API error: ${response.status}`,
+          status: 'ERROR',
+          details: errorText
+        },
+        { status: response.status }
+      )
+    }
+    
     const data = await response.json()
+    
+    // Log for debugging
+    if (data.status !== 'OK') {
+      console.error('Geocoding failed:', data.status, data.error_message)
+    }
     
     return NextResponse.json(data)
   } catch (error) {
+    console.error('Geocoding error:', error)
     return NextResponse.json(
-      { error: 'Failed to geocode address', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: 'Failed to geocode address', 
+        status: 'ERROR',
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      },
       { status: 500 }
     )
   }

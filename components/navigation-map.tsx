@@ -56,15 +56,31 @@ export function NavigationMap({ origin, destination, waypoints = [], onClose }: 
         
         // Determine center based on origin/destination or default to Atlanta
         let center = { lat: 33.7490, lng: -84.3880 };
-        if (origin) {
+        let zoom = 13;
+        
+        if (origin && destination) {
+          // Center between origin and destination
+          center = {
+            lat: (origin.lat + destination.lat) / 2,
+            lng: (origin.lng + destination.lng) / 2,
+          };
+          zoom = 12;
+        } else if (origin) {
           center = { lat: origin.lat, lng: origin.lng };
+          zoom = 14;
         } else if (destination) {
           center = { lat: destination.lat, lng: destination.lng };
+          zoom = 14;
+        }
+        
+        if (!mapRef.current) {
+          console.error('[v0] Map ref is null');
+          return;
         }
         
         mapInstanceRef.current = new google.maps.Map(mapRef.current, {
           center: center,
-          zoom: origin && destination ? 13 : 13,
+          zoom: zoom,
           styles: [
             {
               featureType: 'poi',
@@ -79,64 +95,130 @@ export function NavigationMap({ origin, destination, waypoints = [], onClose }: 
             strokeColor: '#0A3D3D',
             strokeWeight: 5,
           },
+          suppressMarkers: false,
         });
         
         console.log('[v0] Google Map initialized successfully');
       } catch (error) {
         console.error('[v0] Error initializing map:', error);
-        setError('Failed to initialize Google Map. Please check the console for details.');
+        setError(`Failed to initialize Google Map: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   }, [isLoaded, origin, destination]);
 
   useEffect(() => {
-    if (origin && destination && isLoaded) {
+    // Render route if we have both origin and destination
+    if (origin && destination && isLoaded && mapInstanceRef.current && directionsRendererRef.current) {
       console.log('[v0] Origin and destination set, rendering route...', { origin, destination });
-      renderRoute();
+      // Small delay to ensure map is fully initialized
+      const timer = setTimeout(() => {
+        renderRoute();
+      }, 100);
+      return () => clearTimeout(timer);
+    } else if ((origin || destination) && isLoaded && mapInstanceRef.current) {
+      // If we only have one location, just show it on the map without a route
+      console.log('[v0] Single location provided, showing on map...', { origin, destination });
+      try {
+        const location = origin || destination;
+        if (location) {
+          mapInstanceRef.current.setCenter({ lat: location.lat, lng: location.lng });
+          mapInstanceRef.current.setZoom(14);
+          
+          // Add a marker for the location
+          if (typeof google !== 'undefined' && google.maps) {
+            new google.maps.Marker({
+              position: { lat: location.lat, lng: location.lng },
+              map: mapInstanceRef.current,
+              title: location.label || 'Location',
+            });
+          }
+        }
+      } catch (err) {
+        console.error('[v0] Error showing single location:', err);
+      }
     }
   }, [origin, destination, waypoints, isLoaded]);
 
   const renderRoute = async () => {
-    if (!origin || !destination || !mapInstanceRef.current || !directionsRendererRef.current) {
+    if (!origin || !destination) {
+      console.warn('[v0] Cannot render route: missing origin or destination');
+      return;
+    }
+    
+    if (!mapInstanceRef.current || !directionsRendererRef.current) {
+      console.warn('[v0] Cannot render route: map not initialized');
+      // Try to initialize map if not already done
+      if (isLoaded && mapRef.current && typeof google !== 'undefined' && google.maps) {
+        console.log('[v0] Attempting to initialize map before rendering route...');
+        // Map initialization will happen in the useEffect, so we'll retry
+        setTimeout(() => {
+          if (mapInstanceRef.current && directionsRendererRef.current) {
+            renderRoute();
+          }
+        }, 500);
+      }
       return;
     }
 
     setIsLoading(true);
     setError(null);
-    console.log('[v0] Calculating route with Google Directions Service...');
+    console.log('[v0] Calculating route with Google Directions Service...', { origin, destination, waypoints });
 
     try {
+      // Validate coordinates
+      if (isNaN(origin.lat) || isNaN(origin.lng) || isNaN(destination.lat) || isNaN(destination.lng)) {
+        throw new Error('Invalid coordinates provided');
+      }
+      
       const directionsService = new google.maps.DirectionsService();
       
       const request: google.maps.DirectionsRequest = {
         origin: new google.maps.LatLng(origin.lat, origin.lng),
         destination: new google.maps.LatLng(destination.lat, destination.lng),
-        waypoints: waypoints.map(wp => ({
-          location: new google.maps.LatLng(wp.lat, wp.lng),
-          stopover: true,
-        })),
+        waypoints: waypoints && waypoints.length > 0 ? waypoints
+          .filter(wp => wp && !isNaN(wp.lat) && !isNaN(wp.lng))
+          .map(wp => ({
+            location: new google.maps.LatLng(wp.lat, wp.lng),
+            stopover: true,
+          })) : [],
         travelMode: google.maps.TravelMode.DRIVING,
       };
 
       directionsService.route(request, (result, status) => {
-        if (status === google.maps.DirectionsStatus.OK && result) {
+        setIsLoading(false);
+        
+        if (status === google.maps.DirectionsStatus.OK && result && result.routes && result.routes.length > 0) {
           console.log('[v0] Route calculated successfully');
-          directionsRendererRef.current?.setDirections(result);
-
-          const route = result.routes[0];
-          const leg = route.legs[0];
           
-          const steps = leg.steps.map(step => ({
-            instruction: step.instructions.replace(/<[^>]*>/g, ''), // Strip HTML
-            distance: step.distance?.text || '',
-            duration: step.duration?.text || '',
-          }));
+          try {
+            if (directionsRendererRef.current) {
+              directionsRendererRef.current.setDirections(result);
+            }
 
-          setRouteInfo({
-            distance: leg.distance?.text || '',
-            duration: leg.duration?.text || '',
-            steps,
-          });
+            const route = result.routes[0];
+            if (route.legs && route.legs.length > 0) {
+              const leg = route.legs[0];
+              
+              const steps = leg.steps.map((step: any) => ({
+                instruction: step.instructions ? step.instructions.replace(/<[^>]*>/g, '') : '', // Strip HTML
+                distance: step.distance?.text || '',
+                duration: step.duration?.text || '',
+              }));
+
+              setRouteInfo({
+                distance: leg.distance?.text || '',
+                duration: leg.duration?.text || '',
+                steps,
+              });
+              
+              setError(null);
+            } else {
+              throw new Error('Route has no legs');
+            }
+          } catch (err) {
+            console.error('[v0] Error processing route result:', err);
+            setError(`Failed to process route: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          }
         } else {
           console.error('[v0] Directions request failed:', status);
           let errorMessage = 'Failed to calculate route';
@@ -146,18 +228,21 @@ export function NavigationMap({ origin, destination, waypoints = [], onClose }: 
           } else if (status === google.maps.DirectionsStatus.NOT_FOUND) {
             errorMessage = 'One or both locations could not be found. Please check the addresses and try again with more specific locations.';
           } else if (status === google.maps.DirectionsStatus.REQUEST_DENIED) {
-            errorMessage = 'Directions request was denied. Please check your API key permissions.';
+            errorMessage = 'Directions request was denied. Please check your API key permissions for Directions API.';
+          } else if (status === google.maps.DirectionsStatus.OVER_QUERY_LIMIT) {
+            errorMessage = 'Too many requests. Please wait a moment and try again.';
+          } else if (status === google.maps.DirectionsStatus.INVALID_REQUEST) {
+            errorMessage = 'Invalid request. Please check that both origin and destination are valid locations.';
           } else {
-            errorMessage = `Failed to calculate route: ${status}`;
+            errorMessage = `Failed to calculate route: ${status}. Please try again.`;
           }
           
           setError(errorMessage);
         }
-        setIsLoading(false);
       });
     } catch (err: any) {
       console.error('[v0] Error rendering route:', err);
-      setError(err.message);
+      setError(err.message || 'Failed to calculate route. Please try again.');
       setIsLoading(false);
     }
   };

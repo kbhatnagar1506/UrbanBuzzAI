@@ -24,6 +24,9 @@ export function Navbar() {
           <Link href="#solutions" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             Solutions
           </Link>
+          <Link href="/safety" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            Safety Analysis
+          </Link>
           <Link href="#pricing" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             Pricing
           </Link>
